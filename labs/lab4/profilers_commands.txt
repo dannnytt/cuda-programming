@@ -1,0 +1,15 @@
+# nvprof
+    nvprof ./bin/vector_add
+    nvprof -m gst_throughput ./bin/vector_add
+
+#ncu
+    sudo ncu --target-processes all ./bin/vector_add
+    sudo ncu --metrics gpu__time_duration.sum ./bin/vector_add
+    sudo ncu --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second ./bin/vector_add
+    sudo ncu --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second ./bin/vector_add
+    sudo ncu --list-sections
+    ncu --list-sections
+
+#nsys
+    nsys profile --trace=cuda -o profile_result ./bin/vector_add
+    nsys-ui profile-result.nsys-rep
