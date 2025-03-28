@@ -1,0 +1,5 @@
+# Компиляция из .cu в .ptx
+nvcc -arch=sm_75 -ptx -o ptx/kernel.ptx src/kernel.cu
+
+# Компиляция кода в котором используется CUDA Driver API
+nvcc -arch=sm_75 -o bin/main main.cu -lcuda
