@@ -1,0 +1,10 @@
+# Время выполнения
+sudo ncu --kernel-name matrix_transponition ./build/matrix_transpose_prof
+
+sudo ncu --kernel-name matrix_transponition --metrics gpu__time_duration.sum ./build/matrix_transpose_prof
+
+# пропускная способность при загрузке из глобальной памяти и при сохранении в глобальную память.
+sudo ncu --kernel-name matrix_transponition --metrics gpu__time_duration.sum,dram__bytes_read.sum,dram__bytes_write.sum ./build/matrix_transpose_prof
+
+# пункт2
+sudo ncu --kernel-name matrix_transponition --metrics l1tex__t_bytes_pipe_lsu_mem_local_op_ld.sum,l1tex__t_bytes_pipe_lsu_mem_local_op_st.sum ./build/matrix_transpose_prof
