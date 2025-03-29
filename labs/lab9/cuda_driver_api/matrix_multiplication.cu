@@ -1,7 +1,7 @@
 #include <cuda.h>
 #include <iostream>
 
-#define SIZE 1024
+#define SIZE 8096
 
 #define CUDA_CHECK_RETURN(call) \
     do { \
@@ -72,9 +72,15 @@ void process_matrix_miltiplication() {
         (SIZE + threads_per_block.y - 1) / threads_per_block.y
     );
 
+    CUevent start, end;
+    CUDA_CHECK_RETURN(cuEventCreate(&start, CU_EVENT_DEFAULT));
+    CUDA_CHECK_RETURN(cuEventCreate(&end, CU_EVENT_DEFAULT));
+
+
     size_t size = SIZE;
     void *args[] = {&d_vec1, &d_vec2, &d_res, &size};
     
+    CUDA_CHECK_RETURN(cuEventRecord(start, 0));
     CUDA_CHECK_RETURN(cuLaunchKernel(
         kernel,
         num_blocks.x, num_blocks.y, num_blocks.z,
@@ -84,6 +90,8 @@ void process_matrix_miltiplication() {
         args,         // массив указателей на аргументы
         nullptr       // дополнительные параметры
     ));
+    CUDA_CHECK_RETURN(cuEventRecord(end, 0));
+    CUDA_CHECK_RETURN(cuEventSynchronize(end));
     CUDA_CHECK_RETURN(cuCtxSynchronize());
 
     CUDA_CHECK_RETURN(cuMemcpyDtoH_v2(
@@ -92,6 +100,10 @@ void process_matrix_miltiplication() {
         SIZE * SIZE * sizeof(float)
     ));
 
+    float ellapsed_time;
+    CUDA_CHECK_RETURN(cuEventElapsedTime(&ellapsed_time, start, end));
+    printf("Время выполнения: %.4f мс\n", ellapsed_time);
+
     delete[] h_vec1;
     delete[] h_vec2;
     delete[] h_res;
@@ -99,6 +111,9 @@ void process_matrix_miltiplication() {
     CUDA_CHECK_RETURN(cuMemFree_v2(d_vec1));
     CUDA_CHECK_RETURN(cuMemFree_v2(d_vec2));
     CUDA_CHECK_RETURN(cuMemFree_v2(d_res));
+
+    CUDA_CHECK_RETURN(cuEventDestroy_v2(start));
+    CUDA_CHECK_RETURN(cuEventDestroy_v2(end));
 
     CUDA_CHECK_RETURN(cuModuleUnload(module));
     CUDA_CHECK_RETURN(cuCtxDestroy_v2(context));
