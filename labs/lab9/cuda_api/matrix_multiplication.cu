@@ -1,7 +1,7 @@
 #include <cuda_runtime.h>
 #include <iostream>
 
-#define SIZE 1024
+#define SIZE 8096
 
 #define CUDA_CHECK_RETURN(value) { \
     cudaError_t _m_cudaStat = value; \
@@ -77,9 +77,15 @@ void process_matrix_multiplication() {
         (SIZE + threads_per_block.y - 1) / threads_per_block.y
     );
 
+    cudaEvent_t start, end;
+    CUDA_CHECK_RETURN(cudaEventCreate(&start));
+    CUDA_CHECK_RETURN(cudaEventCreate(&end));
+    
+    CUDA_CHECK_RETURN(cudaEventRecord(start));
     matrix_multiplication<<<num_blocks, threads_per_block>>>(d_vec1, d_vec2, d_res, SIZE);
+    CUDA_CHECK_RETURN(cudaEventRecord(end));
+    CUDA_CHECK_RETURN(cudaEventSynchronize(end));
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-
 
     CUDA_CHECK_RETURN(cudaMemcpy(
         h_res,
@@ -88,6 +94,10 @@ void process_matrix_multiplication() {
         cudaMemcpyDeviceToHost
     ));
 
+    float ellapsed_time;
+    CUDA_CHECK_RETURN(cudaEventElapsedTime(&ellapsed_time, start, end));
+    printf("Время выполнения: %.4f мс\n", ellapsed_time);
+
     delete[] h_vec1;
     delete[] h_vec2;
     delete[] h_res;
@@ -95,6 +105,9 @@ void process_matrix_multiplication() {
     CUDA_CHECK_RETURN(cudaFree(d_vec1));
     CUDA_CHECK_RETURN(cudaFree(d_vec2));
     CUDA_CHECK_RETURN(cudaFree(d_res));
+
+    CUDA_CHECK_RETURN(cudaEventDestroy(start));
+    CUDA_CHECK_RETURN(cudaEventDestroy(end));
 }
 
 int main(int argc, char *argv[]) {
