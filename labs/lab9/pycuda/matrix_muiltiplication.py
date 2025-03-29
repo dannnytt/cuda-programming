@@ -4,10 +4,7 @@ import pycuda.autoinit
 import pycuda.driver as cuda
 
 from pycuda import gpuarray
-from pycuda.driver import Device
 from pycuda.compiler import SourceModule
-
-
 
 cuda_code = """
     __global__ void matrix_multiplication(float *vec1, float *vec2, float *res, int size) {
