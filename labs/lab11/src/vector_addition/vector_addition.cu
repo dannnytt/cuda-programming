@@ -3,14 +3,14 @@
 #include <chrono>
 #include <vector>
 
-#define CUDA_CHECK_RETURN(call) { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        std::cerr << "CUDA error at " << __FILE__ << ":" << __LINE__ << ": " \
-                  << cudaGetErrorString(err) << std::endl; \
+#define CUDA_CHECK_RETURN(value) { \
+    cudaError_t _m_cudaStat = value; \
+    if (_m_cudaStat != cudaSuccess) { \
+        fprintf(stderr, "Ошибка %s в строке %d в файле %s\n", \
+        cudaGetErrorString(_m_cudaStat), __LINE__, __FILE__); \
         exit(1); \
-    } \
-}
+    }}
+
 
 __global__ void vector_addition_kernel(int *a, int *b, int *c, int n) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -42,6 +42,8 @@ void benchmark_with_chunk_size(size_t N, size_t chunk_size) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
+    int block_size = 256;
+    
     for (size_t i = 0; i < N; i += chunk_size) {
         size_t current_chunk = min(chunk_size, N - i);
         int stream_idx = i / chunk_size;
@@ -52,17 +54,10 @@ void benchmark_with_chunk_size(size_t N, size_t chunk_size) {
         CUDA_CHECK_RETURN(cudaMemcpyAsync(d_b + i, h_b + i, 
                                   current_chunk * sizeof(int),
                                   cudaMemcpyHostToDevice, streams[stream_idx]));
-    }
-
-    int block_size = 256;
-    int grid_size = (N + block_size - 1) / block_size;
-
-    vector_addition_kernel<<<grid_size, block_size>>>(d_a, d_b, d_c, N);
-    CUDA_CHECK_RETURN(cudaGetLastError());
-
-    for (size_t i = 0; i < N; i += chunk_size) {
-        size_t current_chunk = min(chunk_size, N - i);
-        int stream_idx = i / chunk_size;
+        
+        int grid_size = (current_chunk + block_size - 1) / block_size;
+        vector_addition_kernel<<<grid_size, block_size, 0, streams[stream_idx]>>>(d_a + i, d_b + i, d_c + i, current_chunk);
+        
         CUDA_CHECK_RETURN(cudaMemcpyAsync(h_c + i, d_c + i, 
                                   current_chunk * sizeof(int),
                                   cudaMemcpyDeviceToHost, streams[stream_idx]));
@@ -91,8 +86,8 @@ void benchmark_with_chunk_size(size_t N, size_t chunk_size) {
 
 int main() {
     srand(time(nullptr));
-    const size_t N = 1 << 24; 
-    std::cout << "Testing with N = " << N << " elements" << std::endl;
+    const size_t N = 1 << 24;
+    printf("Размер вектора: %zu\n", N);
 
     std::vector<size_t> chunk_sizes = {
         1 << 10,      
